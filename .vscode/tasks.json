@@ -1,0 +1,38 @@
+{
+    "tasks": [
+        {
+            "type": "cppbuild",
+            "label": "C/C++: g++.exe build active file",
+            "command": "C:\\msys64\\ucrt64\\bin\\g++.exe",
+            "args": [
+                "-g",
+                "-std=c++17",
+                "-I${workspaceFolder}/include",
+                "-L${workspaceFolder}/lib",
+                "-I${workspaceFolder}/Header",
+                "${workspaceFolder}/src/main.cpp",
+                "${workspaceFolder}/src/glad.c",
+                "${workspaceFolder}/src/EBO.cpp",
+                "${workspaceFolder}/src/VAO.cpp",
+                "${workspaceFolder}/src/VBO.cpp",
+                "${workspaceFolder}/src/shaderClass.cpp",
+                "${workspaceFolder}/src/Texture.cpp",
+                "-lglfw3dll",
+                "-o",
+                "${workspaceFolder}/cutable.exe"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "detail": "compiler: C:\\msys64\\ucrt64\\bin\\g++.exe"
+        }
+    ],
+    "version": "2.0.0"
+}
