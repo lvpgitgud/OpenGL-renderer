@@ -37,7 +37,7 @@ void Texture::texUnit(Shader& shader, const char* uniform, GLuint unit)
 {
     GLuint texUni = glGetUniformLocation(shader.ID, uniform);
     shader.Activate();
-    glUniform1i(texUni, unit - GL_TEXTURE0); 
+    glUniform1i(texUni, unit); 
 }
 
 void Texture::Bind()
