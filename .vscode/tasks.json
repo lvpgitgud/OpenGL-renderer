@@ -18,6 +18,7 @@
                 "${workspaceFolder}/src/Camera.cpp",
                 "${workspaceFolder}/src/shaderClass.cpp",
                 "${workspaceFolder}/src/Texture.cpp",
+                "${workspaceFolder}/src/Mesh.cpp",
                 "-lglfw3dll",
                 "-o",
                 "${workspaceFolder}/cutable.exe"
