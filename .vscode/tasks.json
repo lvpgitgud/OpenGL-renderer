@@ -19,6 +19,7 @@
                 "${workspaceFolder}/src/shaderClass.cpp",
                 "${workspaceFolder}/src/Texture.cpp",
                 "${workspaceFolder}/src/Mesh.cpp",
+                "${workspaceFolder}/src/Model.cpp",
                 "-lglfw3dll",
                 "-o",
                 "${workspaceFolder}/cutable.exe"
