@@ -94,6 +94,8 @@ int main()
     //Create new shader
     Shader shaderProgram("Resource/Shaders/default.vert", "Resource/Shaders/default.frag");
 
+    Shader outlineProgram("Resource/Shaders/outline.vert", "Resource/Shaders/outline.frag");
+
 
     glm::vec4 lightColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
 	glm::vec3 lightPos = glm::vec3(0.5f, 0.5f, 0.5f);
@@ -108,13 +110,27 @@ int main()
 
 
     glEnable(GL_DEPTH_TEST);
-    glDepthFunc(GL_LESS);
+    //glDepthFunc(GL_LESS);
+    glEnable(GL_STENCIL_TEST);
+    glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+    //glEnable(GL_CULL_FACE);
+    //glCullFace(GL_FRONT);
+    //glFrontFace(GL_CCW);
 
     Camera camera(width, height, glm::vec3(0.0f, 0.0f, 2.0f));
 
-	Model trees("Resource/Models/trees/scene.gltf");
-    Model ground("Resource/Models/ground/scene.gltf");
-    Model map("Resource/Models/map/scene.gltf");
+	//Model trees("Resource/Models/trees/scene.gltf");
+    //Model ground("Resource/Models/ground/scene.gltf");
+    //Model map("Resource/Models/map/scene.gltf");
+
+    Model crow("Resource/Models/crow/scene.gltf");
+    Model crow2("Resource/Models/crow2/scene.gltf");
+
+    double prevTime = 0.0;
+    double crntTime = 0.0;
+    double timeDiff;
+
+    unsigned int counter =0;
 
 
 
@@ -123,10 +139,24 @@ int main()
 
     while(!glfwWindowShouldClose(window))
     {
+        crntTime = glfwGetTime();
+        timeDiff = crntTime - prevTime;
+        counter++;
+
+        if (timeDiff >= 1.0 / 30.0)
+        {
+            std::string FPS = std::to_string((1.0 / timeDiff) * counter);
+            std::string ms = std::to_string((timeDiff / counter) * 1000);
+            std::string newTitle = "OpemGLRenderer - " + FPS + "FPS / " + ms + "ms";
+            glfwSetWindowTitle(window, newTitle.c_str());
+
+            prevTime = crntTime;
+            counter = 0;
+        }
 		// Specify the color of the background
-		glClearColor(0.85f, 0.85f, 0.90f, 1.0f);
+		glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
 		// Clean the back buffer and depth buffer
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
 		// Handles camera inputs
 		camera.Inputs(window);
@@ -134,10 +164,25 @@ int main()
 		camera.updateMatrix(45.0f, 0.1f, 100.0f);
 
 		// Draw a model
+        glStencilFunc(GL_ALWAYS, 1, 0xFF);
+		// Enable modifying of the stencil buffer
+		glStencilMask(0xFF);
+        crow.Draw(shaderProgram, camera);
 
-        ground.Draw(shaderProgram, camera);
-        trees.Draw(shaderProgram, camera);
+        //ground.Draw(shaderProgram, camera);
+        //trees.Draw(shaderProgram, camera);
+        // Make it so only the pixels without the value 1 pass the test
+		glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
+		// Disable modifying of the stencil buffer
+		glStencilMask(0x00);
+        glDisable(GL_DEPTH_TEST);
+        crow2.Draw(outlineProgram, camera);
+        glStencilMask(0xFF);
+        glStencilFunc(GL_ALWAYS, 0, 0xFF);
+		// Enable the depth buffer
+		glEnable(GL_DEPTH_TEST);
 
+        
 		// Swap the back buffer with the front buffer
 		glfwSwapBuffers(window);
 		// Take care of all GLFW events
