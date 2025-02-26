@@ -20,6 +20,7 @@ class VBO
         GLuint ID;
         VBO(std::vector<Vertex>& vertices);
         VBO(std::vector<glm::mat4>& mat4s);
+        VBO(GLfloat* vertices, GLsizeiptr size);
 
         void Bind();
         void Unbind();
