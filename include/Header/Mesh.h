@@ -11,16 +11,20 @@
 
 class Mesh
 {
-    public:
-    std::vector <Vertex> vertices;
-    std::vector <GLuint> indices;
-    std::vector <Texture> textures;
+public:
+	std::vector <Vertex> vertices;
+	std::vector <GLuint> indices;
+	std::vector <Texture> textures;
+	// Store VAO in public so it can be used in the Draw function
+	VAO VAO;
 
-    VAO VAO;
+	unsigned int instancing;
 
-    Mesh(std::vector <Vertex>& vertices, std::vector <GLuint>& indices, std::vector <Texture>& textures);
+	// Initializes the mesh
+	Mesh(std::vector <Vertex>& vertices, std::vector <GLuint>& indices, std::vector <Texture>& textures, unsigned int instancing = 1, std::vector <glm::mat4> instanceMatrix = {} );
 
-    void Draw
+	// Draws the mesh
+	void Draw
 	(
 		Shader& shader, 
 		Camera& camera,
@@ -29,8 +33,5 @@ class Mesh
 		glm::quat rotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f),
 		glm::vec3 scale = glm::vec3(1.0f, 1.0f, 1.0f)
 	);
-}
-
-;
-
+};
 #endif

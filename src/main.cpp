@@ -98,6 +98,10 @@ void processInput(GLFWwindow *window)
     if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) //If the user presses the escape button
         glfwSetWindowShouldClose(window, true);
 }
+float randf()
+{
+	return -1.0f + (rand() / (RAND_MAX / 2.0f));
+}
 
 //Main function
 int main()
@@ -143,15 +147,20 @@ int main()
     Shader shaderProgram
 	(
 		"Resource/Shaders/default.vert",
-		"Resource/Shaders/default.frag",
-		"Resource/Shaders/default.geom"
+		"Resource/Shaders/default.frag"
 	);
 
-	Shader normalShader
+	Shader skyboxShader
 	(
-		"Resource/Shaders/default.vert",
-		"Resource/Shaders/normals.frag",
-		"Resource/Shaders/normals.geom"
+		"Resource/Shaders/skybox.vert",
+		"Resource/Shaders/skybox.frag"
+	);
+
+	Shader asteroidShader
+	(
+		"Resource/Shaders/asteroid.vert",
+		"Resource/Shaders/default.frag"
+
 	);
 
 
@@ -166,6 +175,11 @@ int main()
 	shaderProgram.Activate();
 	glUniform4f(glGetUniformLocation(shaderProgram.ID, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
 	glUniform3f(glGetUniformLocation(shaderProgram.ID, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
+	skyboxShader.Activate();
+	glUniform1i(glGetUniformLocation(skyboxShader.ID, "skybox"), 0);
+	asteroidShader.Activate();
+	glUniform4f(glGetUniformLocation(asteroidShader.ID, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
+	glUniform3f(glGetUniformLocation(asteroidShader.ID, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
 
 
 
@@ -180,11 +194,9 @@ int main()
 
     Camera camera(width, height, glm::vec3(0.0f, 0.0f, 2.0f));
 
-	//Model trees("Resource/Models/trees/scene.gltf");
-    //Model ground("Resource/Models/ground/scene.gltf");
-    //Model map("Resource/Models/map/scene.gltf");
 
-    Model airplane("Resource/Models/airplane/scene.gltf");
+    Model jupiter("Resource/Models/jupiter/scene.gltf");
+	
 
 
     double prevTime = 0.0;
@@ -194,7 +206,123 @@ int main()
     unsigned int counter =0;
 
 
+	unsigned int skyboxVAO, skyboxVBO, skyboxEBO;
+	glGenVertexArrays(1, &skyboxVAO);
+	glGenBuffers(1, &skyboxVBO);
+	glGenBuffers(1, &skyboxEBO);
+	glBindVertexArray(skyboxVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices, GL_STATIC_DRAW);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, skyboxEBO);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(skyboxIndices), &skyboxIndices, GL_STATIC_DRAW);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
+	std::string facesCubemap[6] =
+	{
+		"Resource/Skyboxes/skybox/right.png",
+		"Resource/Skyboxes/skybox/left.png",
+		"Resource/Skyboxes/skybox/top.png",
+		"Resource/Skyboxes/skybox/bottom.png",
+		"Resource/Skyboxes/skybox/front.png",
+		"Resource/Skyboxes/skybox/back.png"
+	};
+
+	unsigned int cubemapTexture;
+	glGenTextures(1, &cubemapTexture);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	// These are very important to prevent seams
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+	for (unsigned int i = 0; i < 6; i++)
+	{
+		int width, height, nrChannels;
+		unsigned char* data = stbi_load(facesCubemap[i].c_str(), &width, &height, &nrChannels, 0);
+		if (data)
+		{
+			stbi_set_flip_vertically_on_load(false);
+			glTexImage2D
+			(
+				GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
+				0,
+				GL_RGB,
+				width,
+				height,
+				0,
+				GL_RGB,
+				GL_UNSIGNED_BYTE,
+				data
+			);
+			stbi_image_free(data);
+		}
+		else
+		{
+			std::cout << "Failed to load texture: " << facesCubemap[i] << std::endl;
+			stbi_image_free(data);
+		}
+	}
+
+	// The number of asteroids to be created
+	const unsigned int number = 5000;
+	// Radius of circle around which asteroids orbit
+	float radius = 100.0f;
+	// How much ateroids deviate from the radius
+	float radiusDeviation = 25.0f;
+
+	// Holds all transformations for the asteroids
+	std::vector <glm::mat4> instanceMatrix;
+
+	for (unsigned int i = 0; i < number; i++)
+	{
+		// Generates x and y for the function x^2 + y^2 = radius^2 which is a circle
+		float x = randf();
+		float finalRadius = radius + randf() * radiusDeviation;
+		float y = ((rand() % 2) * 2 - 1) * sqrt(1.0f - x * x);
+
+		glm::vec3 tempTranslation;
+		glm::quat tempRotation;
+		glm::vec3 tempScale;
+
+		// Makes the random distribution more even
+		if (randf() > 0.5f)
+		{
+			// Generates a translation near a circle of radius "radius"
+			tempTranslation = glm::vec3(y * finalRadius, randf(), x * finalRadius);
+		}
+		else
+		{
+			// Generates a translation near a circle of radius "radius"
+			tempTranslation = glm::vec3(x * finalRadius, randf(), y * finalRadius);
+		}
+
+		// Generates random rotations
+		tempRotation = glm::quat(1.0f, randf(), randf(), randf());
+		// Generates random scales
+		tempScale = 0.1f * glm::vec3(randf(), randf(), randf());
+
+				// Initialize matrices
+				glm::mat4 trans = glm::mat4(1.0f);
+				glm::mat4 rot = glm::mat4(1.0f);
+				glm::mat4 sca = glm::mat4(1.0f);
+		
+				// Transform the matrices to their correct form
+				trans = glm::translate(trans, tempTranslation);
+				rot = glm::mat4_cast(tempRotation);
+				sca = glm::scale(sca, tempScale);
+		
+				// Push matrix transformation
+				instanceMatrix.push_back(trans * rot * sca);
+	}
+
+
+	Model asteroid("Resource/Models/asteroid/scene.gltf",number, instanceMatrix);
 
 
 
@@ -226,14 +354,41 @@ int main()
 		// Handles camera inputs (delete this if you have disabled VSync)
 		camera.Inputs(window);
 		// Updates and exports the camera matrix to the Vertex Shader
-		camera.updateMatrix(45.0f, 0.1f, 100.0f);
+		camera.updateMatrix(45.0f, 0.1f, 500.0f);
 
 
 		// Draw the normal model
-		airplane.Draw(shaderProgram, camera);
-		airplane.Draw(normalShader, camera);
+		jupiter.Draw(shaderProgram, camera);
+		// Draw the asteroids
+		
+		
+		asteroid.Draw(asteroidShader, camera);
+		
 
-        
+		// Since the cubemap will always have a depth of 1.0, we need that equal sign so it doesn't get discarded
+		glDepthFunc(GL_LEQUAL);
+
+		skyboxShader.Activate();
+		glm::mat4 view = glm::mat4(1.0f);
+		glm::mat4 projection = glm::mat4(1.0f);
+		// We make the mat4 into a mat3 and then a mat4 again in order to get rid of the last row and column
+		// The last row and column affect the translation of the skybox (which we don't want to affect)
+		view = glm::mat4(glm::mat3(glm::lookAt(camera.Position, camera.Position + camera.Orientation, camera.Up)));
+		projection = glm::perspective(glm::radians(45.0f), (float)width / height, 0.1f, 100.0f);
+		glUniformMatrix4fv(glGetUniformLocation(skyboxShader.ID, "view"), 1, GL_FALSE, glm::value_ptr(view));
+		glUniformMatrix4fv(glGetUniformLocation(skyboxShader.ID, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
+
+		// Draws the cubemap as the last object so we can save a bit of performance by discarding all fragments
+		// where an object is present (a depth of 1.0f will always fail against any object's depth value)
+		glBindVertexArray(skyboxVAO);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+		glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+		glBindVertexArray(0);
+
+		// Switch back to the normal depth function
+		glDepthFunc(GL_LESS);
+
 		// Swap the back buffer with the front buffer
 		glfwSwapBuffers(window);
 		// Take care of all GLFW events
@@ -241,7 +396,8 @@ int main()
     }
 
     shaderProgram.Delete();
-	normalShader.Delete();
+	skyboxShader.Delete();
+
 
     glfwDestroyWindow(window);
     glfwTerminate();
